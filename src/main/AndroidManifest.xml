@@ -1,0 +1,36 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.hayukleung.catchcrazycat">
+
+  <application
+      android:allowBackup="true"
+      android:icon="@mipmap/ic_launcher"
+      android:label="@string/app_name"
+      android:supportsRtl="true"
+      android:theme="@style/AppTheme">
+    <activity
+        android:name=".ui.main.GameActivity"
+        android:configChanges="keyboard|keyboardHidden|locale|mcc|mnc|orientation|screenSize|screenLayout"
+        android:launchMode="singleTask"
+        android:screenOrientation="portrait"
+        android:theme="@style/main"
+        android:windowSoftInputMode="stateUnchanged|adjustPan">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity>
+    <activity
+        android:name=".ui.BaseActivity"
+        android:configChanges="keyboard|keyboardHidden|locale|mcc|mnc|orientation|screenSize|screenLayout"
+        android:screenOrientation="portrait"
+        android:windowSoftInputMode="adjustPan|stateHidden"/>
+    <activity
+        android:name=".ui.FullScreenActivity"
+        android:configChanges="keyboard|keyboardHidden|locale|mcc|mnc|orientation|screenSize|screenLayout"
+        android:screenOrientation="portrait"
+        android:windowSoftInputMode="adjustPan|stateHidden"/>
+  </application>
+
+</manifest>

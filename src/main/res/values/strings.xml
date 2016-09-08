@@ -1,0 +1,29 @@
+<resources>
+  <string name="app_name">神经猫</string>
+
+  <!--主页面-->
+  <string name="back_pressed_tips">再按一次退出程序</string>
+
+  <!-- im -->
+  <string name="toolbox_album">图片</string>
+  <string name="toolbox_camera">拍照</string>
+  <string name="toolbar_press2talk">按住说话</string>
+  <string name="toolbar_release2end">松开结束</string>
+  <string name="toolbar_send">发送</string>
+  <string name="error_sdcard_access">无法访问 SD 卡。</string>
+  <string name="error_app_internal">发生内部应用错误。</string>
+  <string name="recording_storage_is_full">存储空间已满</string>
+  <string name="recording_please_insert_your_sdcard">请插入SD卡</string>
+  <string name="recording_tips_bottom">手指上滑，取消发送</string>
+  <string name="recording_tips_above">松开手指，取消发送</string>
+  <string name="recording_time_short">录音时间太短</string>
+  <string name="recording_remain_time">剩余时间</string>
+
+  <!-- 列表下拉刷新及上拉加载更多 -->
+  <string name="xlistview_header_hint_normal">下拉刷新</string>
+  <string name="xlistview_header_hint_ready">松开刷新数据</string>
+  <string name="xlistview_header_hint_loading">正在加载…</string>
+  <string name="xlistview_header_last_time">上次更新时间：</string>
+  <string name="xlistview_footer_hint_normal">查看更多</string>
+  <string name="xlistview_footer_hint_ready">松开载入更多</string>
+</resources>
