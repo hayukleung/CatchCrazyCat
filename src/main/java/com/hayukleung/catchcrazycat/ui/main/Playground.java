@@ -3,12 +3,11 @@
  */
 package com.hayukleung.catchcrazycat.ui.main;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
-import android.os.Build;
+import android.os.Vibrator;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
@@ -16,7 +15,7 @@ import android.view.SurfaceHolder.Callback;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnTouchListener;
-import android.widget.Toast;
+import android.view.ViewGroup;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
@@ -30,22 +29,43 @@ public class Playground extends SurfaceView implements OnTouchListener {
   public static final int ROW = 9;
   public static final int COL = 9;
   private static final int BLOCKS = 8;
-  private Dot matrix[][];
-  private Dot cat;
 
-  /**
-   * @param context
-   * @param attrs
-   * @param defStyleAttr
-   * @param defStyleRes
-   */
-  @TargetApi(Build.VERSION_CODES.LOLLIPOP) public Playground(Context context, AttributeSet attrs,
-      int defStyleAttr, int defStyleRes) {
-    super(context, attrs, defStyleAttr, defStyleRes);
-    getHolder().addCallback(callback);
-    setOnTouchListener(this);
-    initGame();
-  }
+  private static final double HEXAGON = Math.sqrt(3f) / 2f;
+
+  public static final int RESULT_LOSE = -1;
+  public static final int RESULT_WIN = 0;
+  public static final int RESULT_UNKNOWN = 1;
+  private int mResult = RESULT_UNKNOWN;
+
+  private Dot mMatrix[][];
+  private Dot mCat;
+
+  private Callback mCallback = new Callback() {
+
+    @Override public void surfaceDestroyed(SurfaceHolder holder) {
+    }
+
+    @Override public void surfaceCreated(SurfaceHolder holder) {
+      redraw();
+    }
+
+    @Override public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+
+      // 根据SurfaceView的宽度，调整高度
+      ViewGroup.LayoutParams layoutParams = getLayoutParams();
+      // layoutParams.height = (int) (width / ((float) Playground.COL + 0.5) * ((float) Playground.ROW));
+      layoutParams.height = (int) ((width / ((float) COL + 0.5f)) * ((ROW - 1f) * HEXAGON + 1f));
+      setLayoutParams(layoutParams);
+
+      // 根据SurfaceView的大小，调整单元的尺寸
+      WIDTH = 2 * width / (2 * COL + 1);
+      redraw();
+    }
+  };
+
+  private GameCallback mGameCallback;
+
+  private Vibrator mVibrator;
 
   /**
    * @param context
@@ -54,7 +74,8 @@ public class Playground extends SurfaceView implements OnTouchListener {
    */
   public Playground(Context context, AttributeSet attrs, int defStyle) {
     super(context, attrs, defStyle);
-    getHolder().addCallback(callback);
+
+    getHolder().addCallback(mCallback);
     setOnTouchListener(this);
     initGame();
   }
@@ -64,24 +85,22 @@ public class Playground extends SurfaceView implements OnTouchListener {
    * @param attrs
    */
   public Playground(Context context, AttributeSet attrs) {
-    super(context, attrs);
-    getHolder().addCallback(callback);
-    setOnTouchListener(this);
-    initGame();
+    this(context, attrs, 0);
   }
 
   /**
    * @param context
    */
   public Playground(Context context) {
-    super(context);
-    getHolder().addCallback(callback);
-    setOnTouchListener(this);
-    initGame();
+    this(context, null);
+  }
+
+  public void setGameCallback(GameCallback gameCallback) {
+    this.mGameCallback = gameCallback;
   }
 
   private Dot getDot(int x, int y) {
-    return matrix[y][x];
+    return mMatrix[y][x];
   }
 
   /**
@@ -138,7 +157,7 @@ public class Playground extends SurfaceView implements OnTouchListener {
           return getDot(dot.getX(), dot.getY() + 1);
         }
       default:
-        return null;
+        throw new RuntimeException("direction out of range");
     }
   }
 
@@ -169,24 +188,21 @@ public class Playground extends SurfaceView implements OnTouchListener {
    */
   private void moveTo(Dot dot) {
     dot.setStatus(Dot.STATUS_IN);
-    getDot(cat.getX(), cat.getY()).setStatus(Dot.STATUS_OFF);
-    cat.setXY(dot.getX(), dot.getY());
+    getDot(mCat.getX(), mCat.getY()).setStatus(Dot.STATUS_OFF);
+    mCat.setXY(dot.getX(), dot.getY());
+    mVibrator.vibrate(10);
   }
 
   /**
    * 神经猫移动
    */
   private void moveCat() {
-    if (isAtEdge(cat)) {
-      // 神经猫已在边界，游戏失败
-      lose();
-      return;
-    }
+
     Vector<Dot> available = new Vector<Dot>();
     Vector<Dot> positive = new Vector<Dot>();
     Map<Dot, Integer> lines = new HashMap<Dot, Integer>();
     for (int i = 1; i < 7; i++) {
-      Dot neighbor = getNeighbor(cat, i);
+      Dot neighbor = getNeighbor(mCat, i);
       if (Dot.STATUS_OFF == neighbor.getStatus()) {
         available.add(neighbor);
         lines.put(neighbor, i);
@@ -200,7 +216,6 @@ public class Playground extends SurfaceView implements OnTouchListener {
     } else if (1 == available.size()) {
       moveTo(available.get(0));
     } else {
-      //
       Dot best = null;
       if (0 < positive.size()) {
         // 可以到达屏幕边缘
@@ -225,14 +240,25 @@ public class Playground extends SurfaceView implements OnTouchListener {
       }
       moveTo(best);
     }
+
+    if (isAtEdge(mCat)) {
+      // 神经猫已在边界，游戏失败
+      lose();
+    }
   }
 
   private void lose() {
-    Toast.makeText(getContext(), "lose", Toast.LENGTH_SHORT).show();
+    mResult = RESULT_LOSE;
+    if (null != mGameCallback) {
+      mGameCallback.onLose();
+    }
   }
 
   private void win() {
-    Toast.makeText(getContext(), "win", Toast.LENGTH_SHORT).show();
+    mResult = RESULT_WIN;
+    if (null != mGameCallback) {
+      mGameCallback.onWin();
+    }
   }
 
   public void redraw() {
@@ -240,11 +266,11 @@ public class Playground extends SurfaceView implements OnTouchListener {
     canvas.drawColor(0xFF727272);
     Paint paint = new Paint();
     paint.setFlags(Paint.ANTI_ALIAS_FLAG);
+
     for (int i = 0; i < ROW; i++) {
-      int offset = 0;
-      if (0 != i % 2) {
-        offset = WIDTH / 2;
-      }
+
+      int offset = (i % 2) * WIDTH / 2;
+
       for (int j = 0; j < COL; j++) {
         Dot dot = getDot(j, i);
         switch (dot.getStatus()) {
@@ -263,50 +289,45 @@ public class Playground extends SurfaceView implements OnTouchListener {
           default:
             break;
         }
-        canvas.drawOval(new RectF(dot.getX() * WIDTH + offset, dot.getY() * WIDTH,
-            (dot.getX() + 1) * WIDTH + offset, (dot.getY() + 1) * WIDTH), paint);
+
+        float left = dot.getX();
+        float top = (float) (HEXAGON * dot.getY());
+
+        canvas.drawOval(new RectF(
+            left * WIDTH + offset,
+            top * WIDTH,
+            (left + 1) * WIDTH + offset,
+            (top + 1) * WIDTH),
+            paint);
       }
     }
 
     getHolder().unlockCanvasAndPost(canvas);
   }
 
-  Callback callback = new Callback() {
-
-    @Override public void surfaceDestroyed(SurfaceHolder holder) {
-      // TODO Auto-generated method stub
-
-    }
-
-    @Override public void surfaceCreated(SurfaceHolder holder) {
-      // TODO Auto-generated method stub
-      redraw();
-    }
-
-    @Override public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-      // TODO Auto-generated method stub
-      WIDTH = 2 * width / (2 * COL + 1);
-      redraw();
-    }
-  };
-
   public void initGame() {
 
-    matrix = new Dot[ROW][COL];
+    if (null == mVibrator) {
+      mVibrator = (Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
+    }
+
+    mResult = RESULT_UNKNOWN;
+
+    mMatrix = new Dot[ROW][COL];
 
     for (int i = 0; i < ROW; i++) {
       for (int j = 0; j < COL; j++) {
-        matrix[i][j] = new Dot(j, i);
+        mMatrix[i][j] = new Dot(j, i);
       }
     }
 
     for (int i = 0; i < ROW; i++) {
       for (int j = 0; j < COL; j++) {
-        matrix[i][j].setStatus(Dot.STATUS_OFF);
+        mMatrix[i][j].setStatus(Dot.STATUS_OFF);
       }
     }
 
-    cat = new Dot(COL / 2, ROW / 2);
+    mCat = new Dot(COL / 2, ROW / 2);
     getDot(ROW / 2, COL / 2).setStatus(Dot.STATUS_IN);
 
     for (int i = 0; i < BLOCKS; ) {
@@ -317,32 +338,40 @@ public class Playground extends SurfaceView implements OnTouchListener {
         i++;
       }
     }
+
+
   }
 
-  /*
-   * (non-Javadoc)
-   *
-   * @see android.view.View.OnTouchListener#onTouch(android.view.View,
-   * android.view.MotionEvent)
-   */
   @Override public boolean onTouch(View v, MotionEvent event) {
     if (MotionEvent.ACTION_UP == event.getAction()) {
-      int x, y;
-      y = (int) event.getY() / WIDTH;
-      if (0 == y % 2) {
-        x = (int) event.getX() / WIDTH;
-      } else {
-        x = (int) (event.getX() - WIDTH / 2) / WIDTH;
+      switch (mResult) {
+        case RESULT_LOSE: {
+          lose();
+          return false;
+        }
+        case RESULT_WIN: {
+          win();
+          return false;
+        }
+        case RESULT_UNKNOWN:
+        default: {
+          int x, y;
+          y = (int) (event.getY() / (WIDTH * HEXAGON));
+          if (0 == y % 2) {
+            x = (int) event.getX() / WIDTH;
+          } else {
+            x = (int) (event.getX() - WIDTH / 2) / WIDTH;
+          }
+          if (COL < x + 1 || ROW < y + 1) {
+            return false;
+          } else if (Dot.STATUS_OFF == getDot(x, y).getStatus()) {
+            // 设置路障
+            getDot(x, y).setStatus(Dot.STATUS_ON);
+            moveCat();
+          }
+          redraw();
+        }
       }
-      if (COL < x + 1 || ROW < y + 1) {
-        // initGame();
-        return false;
-      } else if (Dot.STATUS_OFF == getDot(x, y).getStatus()) {
-        // 设置路障
-        getDot(x, y).setStatus(Dot.STATUS_ON);
-        moveCat();
-      }
-      redraw();
     }
     return true;
   }

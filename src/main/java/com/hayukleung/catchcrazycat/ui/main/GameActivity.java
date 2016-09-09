@@ -1,10 +1,11 @@
 package com.hayukleung.catchcrazycat.ui.main;
 
 import android.os.Bundle;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.Window;
+import butterknife.Bind;
+import butterknife.ButterKnife;
+import butterknife.OnClick;
 import com.hayukleung.catchcrazycat.R;
+import com.hayukleung.catchcrazycat.Toost;
 import com.hayukleung.catchcrazycat.ui.FullScreenActivity;
 
 /**
@@ -17,31 +18,33 @@ import com.hayukleung.catchcrazycat.ui.FullScreenActivity;
  */
 public class GameActivity extends FullScreenActivity {
 
-  private Playground mPlayground;
+  @Bind(R.id.playground) Playground mPlayground;
 
   @Override protected void onCreate(Bundle savedInstanceState) {
 
-    this.requestWindowFeature(Window.FEATURE_NO_TITLE);
     super.onCreate(savedInstanceState);
-
-    // setContentView(new Playground(MainActivity.this));
     setContentView(R.layout.activity_game);
+    ButterKnife.bind(this);
 
-    mPlayground = (Playground) findViewById(R.id.playground);
+    mPlayground.setGameCallback(new GameCallback() {
 
-    ViewGroup.LayoutParams layoutParams = mPlayground.getLayoutParams();
-    layoutParams.height =
-        (int) ((double) getApplicationContext().getResources().getDisplayMetrics().widthPixels
-            / ((double) Playground.COL + 0.5) * ((double) Playground.ROW));
-    mPlayground.setLayoutParams(layoutParams);
+      @Override public void onWin() {
+        Toost.message("赢了");
+      }
 
-    findViewById(R.id.button1).setOnClickListener(new View.OnClickListener() {
-
-      @Override public void onClick(View v) {
-        // TODO Auto-generated method stub
-        mPlayground.initGame();
-        mPlayground.redraw();
+      @Override public void onLose() {
+        Toost.message("输了");
       }
     });
+  }
+
+  @Override protected void onDestroy() {
+    ButterKnife.unbind(this);
+    super.onDestroy();
+  }
+
+  @OnClick(R.id.reset) public void onClick() {
+    mPlayground.initGame();
+    mPlayground.redraw();
   }
 }
