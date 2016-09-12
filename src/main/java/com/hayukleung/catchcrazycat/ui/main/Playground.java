@@ -19,6 +19,12 @@ import android.view.ViewGroup;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
+import static com.hayukleung.catchcrazycat.ui.main.Dot.DIRECTION_L;
+import static com.hayukleung.catchcrazycat.ui.main.Dot.DIRECTION_L_B;
+import static com.hayukleung.catchcrazycat.ui.main.Dot.DIRECTION_L_T;
+import static com.hayukleung.catchcrazycat.ui.main.Dot.DIRECTION_R;
+import static com.hayukleung.catchcrazycat.ui.main.Dot.DIRECTION_R_B;
+import static com.hayukleung.catchcrazycat.ui.main.Dot.DIRECTION_R_T;
 
 /**
  * @author hayukleung
@@ -117,39 +123,39 @@ public class Playground extends SurfaceView implements OnTouchListener {
    * 返回邻居
    *
    * @param dot
-   * @param direction
+   * @param direction from 1 to 6
    * @return
    */
   private Dot getNeighbor(Dot dot, int direction) {
     switch (direction) {
-      case 1:
+      case DIRECTION_L:
         // 左
         return getDot(dot.getX() - 1, dot.getY());
-      case 2:
+      case DIRECTION_L_T:
         // 左上
         if (0 == dot.getY() % 2) {
           return getDot(dot.getX() - 1, dot.getY() - 1);
         } else {
           return getDot(dot.getX(), dot.getY() - 1);
         }
-      case 3:
+      case DIRECTION_R_T:
         // 右上
         if (0 == dot.getY() % 2) {
           return getDot(dot.getX(), dot.getY() - 1);
         } else {
           return getDot(dot.getX() + 1, dot.getY() - 1);
         }
-      case 4:
+      case DIRECTION_R:
         // 右
         return getDot(dot.getX() + 1, dot.getY());
-      case 5:
+      case DIRECTION_R_B:
         // 右下
         if (0 == dot.getY() % 2) {
           return getDot(dot.getX(), dot.getY() + 1);
         } else {
           return getDot(dot.getX() + 1, dot.getY() + 1);
         }
-      case 6:
+      case DIRECTION_L_B:
         // 左下
         if (0 == dot.getY() % 2) {
           return getDot(dot.getX() - 1, dot.getY() + 1);
@@ -161,6 +167,13 @@ public class Playground extends SurfaceView implements OnTouchListener {
     }
   }
 
+  /**
+   * 计算dot往direction方向到达边缘的可走步数
+   *
+   * @param dot
+   * @param direction
+   * @return 小于0 - 不可到达边缘
+   */
   private int getDistance(Dot dot, int direction) {
     int distance = 0;
     if (isAtEdge(dot)) {
@@ -190,36 +203,44 @@ public class Playground extends SurfaceView implements OnTouchListener {
     dot.setStatus(Dot.STATUS_IN);
     getDot(mCat.getX(), mCat.getY()).setStatus(Dot.STATUS_OFF);
     mCat.setXY(dot.getX(), dot.getY());
-    mVibrator.vibrate(10);
   }
 
   /**
    * 神经猫移动
+   * FIXME 算法优化
    */
   private void moveCat() {
 
+    // 猫可走的位置
     Vector<Dot> available = new Vector<Dot>();
     Vector<Dot> positive = new Vector<Dot>();
     Map<Dot, Integer> lines = new HashMap<Dot, Integer>();
-    for (int i = 1; i < 7; i++) {
-      Dot neighbor = getNeighbor(mCat, i);
+
+    // 遍历猫的六个身旁位置
+    for (int direction = 1; direction < 7; direction++) {
+      Dot neighbor = getNeighbor(mCat, direction);
       if (Dot.STATUS_OFF == neighbor.getStatus()) {
         available.add(neighbor);
-        lines.put(neighbor, i);
-        if (0 < getDistance(neighbor, i)) {
+        lines.put(neighbor, direction);
+        if (0 < getDistance(neighbor, direction)) {
           positive.add(neighbor);
         }
       }
     }
+
     if (0 == available.size()) {
+      // 猫无路可走
       win();
     } else if (1 == available.size()) {
+      // 猫只有一条路可走
       moveTo(available.get(0));
     } else {
+      // 猫有多条路可走
       Dot best = null;
       if (0 < positive.size()) {
-        // 可以到达屏幕边缘
+        // 直走可以到达屏幕边缘
         int min = Integer.MAX_VALUE;
+        // 寻找可以最快到达边缘的那个位置
         for (int i = 0; i < positive.size(); i++) {
           int distance = getDistance(positive.get(i), lines.get(positive.get(i)));
           if (distance <= min) {
@@ -228,8 +249,9 @@ public class Playground extends SurfaceView implements OnTouchListener {
           }
         }
       } else {
-        // 都有路障
+        // 直走都有路障
         int max = 0;
+        // 寻找可以最慢到达边缘的那个位置，能拖一时是一时，这里存在算法上的不合理
         for (int i = 0; i < available.size(); i++) {
           int distance = getDistance(available.get(i), lines.get(available.get(i)));
           if (distance <= max) {
@@ -261,9 +283,12 @@ public class Playground extends SurfaceView implements OnTouchListener {
     }
   }
 
+  /**
+   * 重绘
+   */
   public void redraw() {
     Canvas canvas = getHolder().lockCanvas();
-    canvas.drawColor(0xFF727272);
+    canvas.drawColor(0x00000000);
     Paint paint = new Paint();
     paint.setFlags(Paint.ANTI_ALIAS_FLAG);
 
@@ -276,11 +301,11 @@ public class Playground extends SurfaceView implements OnTouchListener {
         switch (dot.getStatus()) {
           case Dot.STATUS_ON:
             // 路障颜色
-            paint.setColor(0xFF4CAF50);
+            paint.setColor(0xFF3CbF30);
             break;
           case Dot.STATUS_OFF:
             // 空地颜色
-            paint.setColor(0xFFB6B6B6);
+            paint.setColor(0xFFe2e2e2);
             break;
           case Dot.STATUS_IN:
             // 神经猫颜色
@@ -368,6 +393,7 @@ public class Playground extends SurfaceView implements OnTouchListener {
             // 设置路障
             getDot(x, y).setStatus(Dot.STATUS_ON);
             moveCat();
+            mVibrator.vibrate(10);
           }
           redraw();
         }
